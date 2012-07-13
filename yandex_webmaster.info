@@ -1,0 +1,4 @@
+name = Yandex.Webmaster
+description = "Yandex.Webmaster service integration module"
+core = 7.x
+php = 5.1

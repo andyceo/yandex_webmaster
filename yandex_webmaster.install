@@ -1,0 +1,145 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the Yandex.Webmaster module.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function yandex_webmaster_uninstall() {
+  $variables = array('yandex_webmaster_authorization_code', 'yandex_webmaster_token', 'yandex_webmaster_token_timestamp', 'yandex_webmaster_token_expires_in');
+
+  foreach ($variables as $var_name) {
+    variable_del($var_name);
+  }
+}
+
+function yandex_webmaster_schema() {
+  $schema = array();
+  $schema['yandex_webmaster'] = array(
+    'description' => 'Yandex.Webmaster service information cache.',
+    'fields' => array(
+      'uid' => array(
+        'description' => 'Drupal user id.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'auth_code' => array(
+        'description' => 'Yandex OAuth authentication code.',
+        'type' => 'varchar',
+        'length' => '10',
+        'not null' => TRUE,
+      ),
+      'token' => array(
+        'description' => 'Yandex OAuth token',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'created' => array(
+        'description' => 'Token creation date.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'expired' => array(
+        'description' => 'Token expiring date.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'cache' => array(
+        'description' => 'Yandex.Webmaster service information cache.',
+        'type' => 'blob',
+        'not null' => FALSE,
+      ),
+      'cached' => array(
+        'description' => 'Cache creation date.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'unique keys' => array(
+      'uid' => array('uid')
+    ),
+  );
+  $schema['yandex_webmaster_host_list'] = array(
+    'description' => 'Contain actual host list.',
+    'fields' => array(
+      'uid' => array(
+        'description' => 'User id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'hid' => array(
+        'description' => 'Host id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'name' => array(
+        'description' => 'Host name.',
+        'type' => 'text',
+        'not null' => TRUE,
+      ),
+      'tcy' => array(
+        'description' => 'Host TCY.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'medium',
+        'not null' => TRUE,
+      ),
+      'loaded' => array(
+        'description' => 'Host loaded pages count.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'indexed' => array(
+        'description' => 'Host indexed pages count.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'last_visit' => array(
+        'description' => 'Last visit timestamp',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'virused' => array(
+        'description' => 'Flag: Is host virused?',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+      'crawling' => array(
+        'description' => 'Flag: Is host crawled?',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+      'verified' => array(
+        'description' => 'Flag: Is host verified?',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+      'resources' => array(
+        'description' => 'Host resources (from service document).',
+        'type' => 'text',
+        'not null' => TRUE,
+      ),
+    ),
+    'unique keys' => array(
+      'uid' => array('uid', 'hid')
+    ),
+  );
+  return $schema;
+}
