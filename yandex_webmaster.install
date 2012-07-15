@@ -8,7 +8,7 @@
  * Implements hook_uninstall().
  */
 function yandex_webmaster_uninstall() {
-  $variables = array('yandex_webmaster_authorization_code', 'yandex_webmaster_token', 'yandex_webmaster_token_timestamp', 'yandex_webmaster_token_expires_in');
+  $variables = array('yandex_webmaster_timeout', 'yandex_webmaster_cache_lifetime');
 
   foreach ($variables as $var_name) {
     variable_del($var_name);
@@ -49,16 +49,18 @@ function yandex_webmaster_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      'cache' => array(
-        'description' => 'Yandex.Webmaster service information cache.',
-        'type' => 'blob',
-        'not null' => FALSE,
+      'domain' => array(
+        'description' => 'Yandex.Webmaster language domain',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
       ),
       'cached' => array(
-        'description' => 'Cache creation date.',
+        'description' => 'When host list was cached',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
+        'default' => 0,
       ),
     ),
     'unique keys' => array(
@@ -85,56 +87,54 @@ function yandex_webmaster_schema() {
         'type' => 'text',
         'not null' => TRUE,
       ),
+      'verified' => array(
+        'description' => 'Flag: Is host verified?',
+        'type' => 'varchar',
+        'length' => '32',
+        'not null' => TRUE,
+      ),
       'tcy' => array(
         'description' => 'Host TCY.',
         'type' => 'int',
         'unsigned' => TRUE,
         'size' => 'medium',
-        'not null' => TRUE,
+        'not null' => FALSE,
       ),
       'loaded' => array(
         'description' => 'Host loaded pages count.',
         'type' => 'int',
         'unsigned' => TRUE,
-        'not null' => TRUE,
+        'not null' => FALSE,
       ),
       'indexed' => array(
         'description' => 'Host indexed pages count.',
         'type' => 'int',
         'unsigned' => TRUE,
-        'not null' => TRUE,
+        'not null' => FALSE,
       ),
       'last_visit' => array(
         'description' => 'Last visit timestamp',
         'type' => 'int',
         'unsigned' => TRUE,
-        'not null' => TRUE,
+        'not null' => FALSE,
       ),
       'virused' => array(
         'description' => 'Flag: Is host virused?',
         'type' => 'int',
         'unsigned' => TRUE,
         'size' => 'tiny',
-        'not null' => TRUE,
+        'not null' => FALSE,
       ),
       'crawling' => array(
         'description' => 'Flag: Is host crawled?',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'size' => 'tiny',
-        'not null' => TRUE,
-      ),
-      'verified' => array(
-        'description' => 'Flag: Is host verified?',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'size' => 'tiny',
-        'not null' => TRUE,
+        'type' => 'varchar',
+        'length' => '32',
+        'not null' => FALSE,
       ),
       'resources' => array(
         'description' => 'Host resources (from service document).',
-        'type' => 'text',
-        'not null' => TRUE,
+        'type' => 'blob',
+        'not null' => FALSE,
       ),
     ),
     'unique keys' => array(

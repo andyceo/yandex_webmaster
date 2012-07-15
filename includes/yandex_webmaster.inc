@@ -20,9 +20,9 @@ class DrupalYandexWebmaster {
   protected $token;
 
   /**
-   * Yandex.Webmaster API url.
+   * Yandex.Webmaster language domain.
    */
-  protected $url;
+  protected $domain;
 
   /**
    * Query timeout, in seconds.
@@ -34,7 +34,14 @@ class DrupalYandexWebmaster {
    */
   protected $uid;
 
+  /**
+   * Yandex.Webmaster link to host list.
+   */
   protected $host_list_url;
+
+  /**
+   * Cached Yandex.Webmaster host list.
+   */
   protected $host_list;
 
   // Error handling variables
@@ -44,27 +51,27 @@ class DrupalYandexWebmaster {
 
 
   /**
-   * Constructor fully Drupal-specific.
+   * Constructor for Yandex.Webmaster class.
    *
    * @param $token
    * @param $url
    * @param $cache
    */
-  function __construct($token, $url, $cache = NULL) {
+  function __construct($token, $domain, $host_list = NULL) {
     $this->token = $token;
-    $this->url = $url;
+    $this->domain = $domain;
 
-    if (!$cache) {
+    if (!$host_list) {
       $cache = $this->getServiceInfo();
-    }
-    if (is_array($cache)) {
-      $cache = (object)$cache;
-    }
-    if (is_object($cache)) {
-      $this->uid = $cache->uid;
-      $this->host_list_url = $cache->host_list_url;
       $this->host_list = $cache->host_list;
     }
+    else {
+      $this->host_list = $host_list;
+    }
+  }
+
+  function getApiUrl() {
+    return 'https://' . $this->domain . '/api';
   }
 
   function setTimeout($timeout) {
@@ -109,7 +116,7 @@ class DrupalYandexWebmaster {
 
     // We will recieve a redirect to service document with that settings
     // and it will be automatically parsed in $this->request();
-    $url = $this->url . '/me';
+    $url = $this->getApiUrl() . '/me';
     $options = array('max_redirects' => 1); // we want to get a service document at once
 
     if (!$result = $this->request($url, $options, 'DrupalYandexWebmasterXMLParserServiceDocument')) {
@@ -198,6 +205,20 @@ class DrupalYandexWebmaster {
     return $this->getHostAPIRequest($hid, 'links', 'DrupalYandexWebmasterXMLParserExternalLinks');
   }
 
+  function addHost($host) {
+    $html = '<host><name>' . $host . '</name></host>';
+    $url = $this->getHostListUrl();
+    $options = array(
+      'method' => 'POST',
+      'data' => 'name=' . urlencode($html),
+    );
+    krumo($this->request($url, $options, 'DrupalYandexWebmasterXMLParser'));
+    if (!$result = $this->request($url, $options, 'DrupalYandexWebmasterXMLParser')) {
+      return FALSE;
+    }
+    return $result;
+  }
+
 ////////////////END OF API METHODS////////////////
 
   /**
@@ -208,6 +229,10 @@ class DrupalYandexWebmaster {
       return FALSE;
     }
     $url = $this->getHostListUrl() . '/' . $hid . '/' . $resources[$key];
+    // Add statistics marker to the query
+    // We can guarantee that in our queries there is no query part and
+    // fragment part in $url, so we don't need to check for that.
+    $url .= '?wizard=drupal_yandex_webmaster';
     if (!$result = $this->request($url, array(), $parser)) {
       return FALSE;
     }
@@ -234,12 +259,6 @@ class DrupalYandexWebmaster {
     if (!isset($options['timeout'])) {
       $options['timeout'] = $this->timeout;
     }
-
-    // add statistics marker to the query
-    //global $language;
-    // We can guarantee that in our queries there is no query part and
-    // fragment part in $url, so we don't need to check for that.
-    //$url .= '?wizard=drupal_yandex_webmaster_' . $language->language;
 
     // execute query
     $result = drupal_http_request($url, $options);

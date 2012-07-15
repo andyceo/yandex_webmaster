@@ -11,9 +11,8 @@ define('YANDEX_WEBMASTER_CLIENT_ID', '330203f400624560ad05db69a995a34f');
 define('YANDEX_WEBMASTER_CLIENT_SECRET', '60ff216e90d74140901d78e6f33cb5b9');
 define('YANDEX_WEBMASTER_OAUTH_LINK', 'https://oauth.yandex.ru/authorize?response_type=code&client_id=' . YANDEX_WEBMASTER_CLIENT_ID . '&display=iframe');
 define('YANDEX_WEBMASTER_TOKEN_LINK', 'https://oauth.yandex.ru/token');
-define('YANDEX_WEBMASTER_API_LINK', 'https://webmaster.yandex.ru/api');
-define('YANDEX_WEBMASTER_TIMEOUT', 5);
-define('YANDEX_WEBMASTER_CACHE_LIFETIME', 30 * 24 * 60 * 60);
+define('YANDEX_WEBMASTER_DEFAULT_TIMEOUT', 5);
+define('YANDEX_WEBMASTER_DEFAULT_CACHE_LIFETIME', 30 * 24 * 60 * 60);
 
 /**
  * Implementation of hook_menu().
@@ -22,49 +21,64 @@ function yandex_webmaster_menu() {
   $items = array();
   $items['admin/config/services/yandex_webmaster'] = array(
     'title' => 'Yandex.Webmaster',
-    'description' => 'Get and save the Yandex.Webmaster confirmation code.',
+    'description' => 'Get and save the Yandex.Webmaster confirmation code and setup settings.',
     'type' => MENU_NORMAL_ITEM,
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('yandex_webmaster_admin_form'),
-    'access arguments' => array('administer site configuration'),
+    'page arguments' => array('yandex_webmaster_auth_form'),
+    'access callback' => 'yandex_webmaster_access',
+    'access arguments' => array('work with yandex.webmaster'),
     'file' => 'includes/yandex_webmaster.admin.inc',
   );
-  $items['admin/config/services/yandex_webmaster/settings'] = array(
-    'title' => 'Settings',
+  $items['admin/config/services/yandex_webmaster/auth'] = array(
+    'title' => 'Authorization',
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'file' => 'includes/yandex_webmaster.admin.inc',
     'weight' => 1,
   );
-  $items['admin/config/services/yandex_webmaster/list'] = array(
-    'title' => 'Host list',
+  $items['admin/config/services/yandex_webmaster/settings'] = array(
+    'title' => 'Settings',
     'type' => MENU_LOCAL_TASK,
-    'page callback' => 'yandex_webmaster_list_callback',
-    'access arguments' => array('administer site configuration'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('yandex_webmaster_settings_form'),
+    'access callback' => 'yandex_webmaster_access',
+    'access arguments' => array('work with yandex.webmaster', 'view yandex.webmaster information about this site'),
     'file' => 'includes/yandex_webmaster.admin.inc',
     'weight' => 2,
   );
-  $items['admin/config/services/yandex_webmaster/add'] = array(
-    'title' => 'Add site',
-    'type' => MENU_LOCAL_TASK,
-    'page callback' => 'yandex_webmaster_add_callback',
-    'access arguments' => array('administer site configuration'),
-    'file' => 'includes/yandex_webmaster.admin.inc',
-    'weight' => 3,
-  );
-
 
   //  Some hardcoded tabs for host stats, verify, excluded, indexed, links and tops.
   $items['admin/reports/yandex_webmaster'] = array(
     'title' => 'Yandex.Webmaster',
     'description' => 'Reports gathered from Yandex.Webmaster service.',
     'type' => MENU_NORMAL_ITEM,
-    'page callback' => 'yandex_webmaster_stats_callback',
-    'access arguments' => array('administer site configuration'),
+    'page callback' => 'yandex_webmaster_list_callback',
+    'access callback' => 'yandex_webmaster_access',
+    'access arguments' => array('work with yandex.webmaster', 'view yandex.webmaster information about this site'),
     'file' => 'includes/yandex_webmaster.report.inc',
   );
+  $items['admin/reports/yandex_webmaster/list'] = array(
+    'title' => 'Host list',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'file' => 'includes/yandex_webmaster.report.inc',
+    'weight' => 0,
+  );
+
+  $items['admin/reports/yandex_webmaster/add'] = array(
+    'title' => 'Add site',
+    'type' => MENU_LOCAL_ACTION,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('yandex_webmaster_add_form'),
+    'access callback' => 'yandex_webmaster_access',
+    'access arguments' => array('work with yandex.webmaster'),
+    'file' => 'includes/yandex_webmaster.action.inc',
+  );
+
   $items['admin/reports/yandex_webmaster/stats'] = array(
     'title' => 'Statistics',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'yandex_webmaster_stats_callback',
+    'access callback' => 'yandex_webmaster_access',
+    'access arguments' => array('work with yandex.webmaster', 'view yandex.webmaster information about this site'),
     'file' => 'includes/yandex_webmaster.report.inc',
     'weight' => 1,
   );
@@ -72,7 +86,8 @@ function yandex_webmaster_menu() {
     'title' => 'Indexed pages',
     'type' => MENU_LOCAL_TASK,
     'page callback' => 'yandex_webmaster_indexed_callback',
-    'access arguments' => array('administer site configuration'),
+    'access callback' => 'yandex_webmaster_access',
+    'access arguments' => array('work with yandex.webmaster', 'view yandex.webmaster information about this site'),
     'file' => 'includes/yandex_webmaster.report.inc',
     'weight' => 2,
   );
@@ -80,7 +95,8 @@ function yandex_webmaster_menu() {
     'title' => 'Excluded pages',
     'type' => MENU_LOCAL_TASK,
     'page callback' => 'yandex_webmaster_excluded_callback',
-    'access arguments' => array('administer site configuration'),
+    'access callback' => 'yandex_webmaster_access',
+    'access arguments' => array('work with yandex.webmaster', 'view yandex.webmaster information about this site'),
     'file' => 'includes/yandex_webmaster.report.inc',
     'weight' => 3,
   );
@@ -88,15 +104,17 @@ function yandex_webmaster_menu() {
     'title' => 'Top Search Queries',
     'type' => MENU_LOCAL_TASK,
     'page callback' => 'yandex_webmaster_tops_callback',
-    'access arguments' => array('administer site configuration'),
+    'access callback' => 'yandex_webmaster_access',
+    'access arguments' => array('work with yandex.webmaster', 'view yandex.webmaster information about this site'),
     'file' => 'includes/yandex_webmaster.report.inc',
     'weight' => 4,
   );
   $items['admin/reports/yandex_webmaster/links'] = array(
     'title' => 'External links',
     'type' => MENU_LOCAL_TASK,
-    'page callback' => 'yandex_webmaster_tops_callback',
-    'access arguments' => array('administer site configuration'),
+    'page callback' => 'yandex_webmaster_links_callback',
+    'access callback' => 'yandex_webmaster_access',
+    'access arguments' => array('work with yandex.webmaster', 'view yandex.webmaster information about this site'),
     'file' => 'includes/yandex_webmaster.report.inc',
     'weight' => 5,
   );
@@ -104,19 +122,50 @@ function yandex_webmaster_menu() {
 }
 
 
+function yandex_webmaster_permission() {
+  return array(
+    'work with yandex.webmaster' => array(
+      'title' => t('Work with Yandex.Webmaster service'),
+      'description' => t('Users will be allowed to obtain Yandex.Webmaster tokens and view information about their sites in service, as well as add and delete sites from it.'),
+    ),
+    'view yandex.webmaster information about this site' => array(
+      'title' => t('View Yandex.Webmaster information about this site'),
+      'description' => t('Users can view information about this site, provided from Yandex.Webmaster service.'),
+    ),
+  );
+}
+
+/**
+ * Access calback for menu items.
+ */
+function yandex_webmaster_access() {
+  $perms = func_get_args();
+  if (!count($perms)) {
+    return FALSE;
+  }
+  foreach ($perms as $perm) {
+    if (user_access($perm)) {
+      return TRUE;
+    }
+  }
+}
+
+
 ////////API////////
 
+/**
+ * Perform authenthication in Yandex.Webmaster service.
+ */
 function yandex_webmaster_authenthicate($auth_code) {
-  $url = YANDEX_WEBMASTER_TOKEN_LINK;
   $options = array(
     'method' => 'POST',
-    'timeout' => YANDEX_WEBMASTER_TIMEOUT,
+    'timeout' => variable_get('yandex_webmaster_timeout', YANDEX_WEBMASTER_DEFAULT_TIMEOUT),
     'data' => 'grant_type=authorization_code'
       . '&code=' . $auth_code
       . '&client_id=' . YANDEX_WEBMASTER_CLIENT_ID
       . '&client_secret=' . YANDEX_WEBMASTER_CLIENT_SECRET
   );
-  $result = drupal_http_request($url, $options);
+  $result = drupal_http_request(YANDEX_WEBMASTER_TOKEN_LINK, $options);
 
   // Check for timeout
   if ($result->code == HTTP_REQUEST_TIMEOUT) {
@@ -133,6 +182,11 @@ function yandex_webmaster_authenthicate($auth_code) {
     return FALSE;
   }
 
+  // Get automatically defained domain language for user
+  require_once('includes/yandex_webmaster.admin.inc');
+  $domain = drupal_get_form('yandex_webmaster_settings_form');
+  $domain = $domain['domain']['#default_value'];
+
   global $user;
   db_merge('yandex_webmaster')
   ->key(array('uid' => $user->uid))
@@ -141,7 +195,7 @@ function yandex_webmaster_authenthicate($auth_code) {
     'token' => $result['access_token'],
     'created' => time(),
     'expired' => time() + $result['expires_in'],
-    'cache' => '',
+    'domain' => $domain,
     'cached' => 0,
   ))
   ->execute();
@@ -160,37 +214,56 @@ function yandex_webmaster_instance($reset = FALSE) {
       ->execute()
       ->fetchObject();
     if ($cache) {
-      if (!empty($cache->cache) && ($cache->cached + YANDEX_WEBMASTER_CACHE_LIFETIME) > time()) {
-        $cache->cache = unserialize($cache->cache);
-        $yw = new DrupalYandexWebmaster($cache->token, YANDEX_WEBMASTER_API_LINK, $cache->cache);
-        $yw->setTimeout(YANDEX_WEBMASTER_TIMEOUT);
+      if (($cache->cached + YANDEX_WEBMASTER_DEFAULT_CACHE_LIFETIME) > time()) {
+        // Host list cache not expired and exists.
+        $host_list = db_select('yandex_webmaster_host_list', 'ywhl')
+          ->fields('ywhl', array('hid', 'resources'))
+          ->condition('uid', $user->uid)
+          ->execute()
+          ->fetchAllKeyed();
+        foreach ($host_list as $hid => $host) {
+          $host_list[$hid] = unserialize($host);
+        }
+        $yw = new DrupalYandexWebmaster($cache->token, $cache->domain, $host_list);
+        $yw->setTimeout(variable_get('yandex_webmaster_timeout', YANDEX_WEBMASTER_DEFAULT_TIMEOUT));
       }
       else {
-        $yw = new DrupalYandexWebmaster($cache->token, YANDEX_WEBMASTER_API_LINK);
-        $yw->setTimeout(YANDEX_WEBMASTER_TIMEOUT);
+        // Host list cache expired or never be fetched.
+        $yw = new DrupalYandexWebmaster($cache->token, $cache->domain);
+        $yw->setTimeout(variable_get('yandex_webmaster_timeout', YANDEX_WEBMASTER_DEFAULT_TIMEOUT));
         $cache = $yw->getServiceInfo();
+        $host_list = $yw->getHostList();
+        foreach ($host_list as $host) {
+          db_merge('yandex_webmaster_host_list')
+            ->key(array(
+              'uid' => $user->uid,
+              'hid' => $host['hid'],
+            ))
+            ->fields(array(
+              'name' => $host['name'],
+              'verified' => $host['verification']['state'],
+              'tcy' => isset($host['tcy']) ? $host['tcy'] : NULL,
+              'loaded' => isset($host['url-count']) ? (int)$host['url-count'] : NULL,
+              'indexed' => isset($host['index-count']) ? (int)$host['index-count'] : NULL,
+              'last_visit' => isset($host['last-access']) ? strtotime($host['last-access']) : NULL,
+              'virused' => isset($host['virused']) ? (int)$host['virused'] : NULL,
+              'crawling' => isset($host['crawling']['state']) ? (int)$host['crawling']['state'] : NULL,
+              'resources' => serialize($cache->host_list[$host['hid']]),
+            ))
+            ->execute();
+        }
         db_merge('yandex_webmaster')
           ->key(array('uid' => $user->uid))
-          ->fields(array(
-            'cache' => serialize($cache),
-            'cached' => time(),
-          ))
+          ->fields(array('cached' => time()))
           ->execute();
       }
     }
     else {
-      drupal_set_message(t('You did not set permissions for that module to grab information from Yandex.Webmaster. Please, go to the module <a href="!url">settings page</a> to allow that.', array('!url' => YANDEX_WEBMASTER_OAUTH_LINK)), 'error');
+      drupal_set_message(t('You did not allow to grab information from Yandex.Webmaster. Please, go to the module <a href="!url">settings page</a> to allow that.', array('!url' => YANDEX_WEBMASTER_OAUTH_LINK)), 'error', FALSE);
       $yw = NULL;
     }
   }
   return $yw;
-}
-
-function yandex_webmaster_user_host_list() {
-  $yw = yandex_webmaster_instance();
-  $cache = $yw->getServiceInfo();
-  // @TODO: add current host if permission exists
-  return $cache->host_list;
 }
 
 function yandex_webmaster_host_properties() {
@@ -205,43 +278,3 @@ function yandex_webmaster_host_properties() {
   );
 }
 
-
-/*
-  private function logError() {
-    $type = 'yandex_webmaster';
-    $vars = array('@error' => var_export($this->error, TRUE));
-
-    switch ($this->error['type']) {
-      case 'timeout':
-        watchdog($type, 'Timeout error. Error data:<br />@error', $vars, WATCHDOG_ERROR);
-        if ($this->error_verbose) {
-          drupal_set_message(t('Yandex.Webmaster timeout error.'), 'error');
-        }
-        break;
-      case 'http':
-        watchdog($type, 'HTTP error. Error data:<br />@error', $vars, WATCHDOG_ERROR);
-        if ($this->error_verbose) {
-          drupal_set_message(t('Yandex.Webmaster HTTP error.'), 'error');
-        }
-        break;
-      case 'oauth':
-        watchdog($type, 'OAuth error. Error data:<br />@error', $vars, WATCHDOG_ERROR);
-        if ($this->error_verbose) {
-          drupal_set_message(t('Yandex.Webmaster OAuth error.'), 'error');
-        }
-        break;
-      case 'api':
-        watchdog($type, 'API error. Error data:<br />@error', $vars, WATCHDOG_ERROR);
-        if ($this->error_verbose) {
-          drupal_set_message(t('Yandex.Webmaster API error.'), 'error');
-        }
-        break;
-      default:
-        watchdog($type, 'Unknown error. Error data:<br />@error', $vars, WATCHDOG_ERROR);
-        if ($this->error_verbose) {
-          drupal_set_message(t('Yandex.Webmaster unknown error.'), 'error');
-        }
-        break;
-    }
-  }
-  */

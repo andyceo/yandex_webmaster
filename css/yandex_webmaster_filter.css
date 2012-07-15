@@ -1,0 +1,19 @@
+#yandex-webmaster-report-filter-form #edit-filter {
+  padding: 1em 0 0;
+}
+
+#yandex-webmaster-report-filter-form .form-actions {
+  float: left;
+  padding: 2ex 0 0 1em;
+}
+
+#yandex-webmaster-report-filter-form .form-item-host{
+  float: left;
+  padding: 0px;
+}
+
+#yandex-webmaster-report-filter-form .form-item-reset-cache {
+  float: left;
+  margin: 0.1em;
+  padding: 17px 0.8em 9px 0.8em;
+}
